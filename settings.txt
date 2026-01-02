@@ -1,0 +1,28 @@
+# Represents how many times the program checks the API per second
+UPDATE_RATE = 30
+
+# Pick a decimal number from 0.0 to 1.0 (Volume of event sounds only)
+VOLUME = 0.50
+
+# Make a list of volume floats (also 0.0 to 1.0) for each music track:
+
+# Grasswalk
+VOLUME_LIST = [1.0, 0.9, 0.8]
+MUSIC_FOLDER_NAME = 'grasswalk'
+
+
+# Include the name of the music folder you want to use; folder should be
+# located in ./music/kda
+# MUSIC_FOLDER_NAME = ''
+
+
+
+# Make a list of KDA thresholds; if the list is [1, 3], the first track
+# will play from 0.0 to 0.99 KDA, second track from 1.0 to 2.99 KDA, and
+# third track at 3.0 KDA and above
+KDA_THRESHOLDS = [1, 3]
+
+
+# There is no setting for this, but just a note:
+# The music while dead will be the lowest KDA track
+# The music in the 10s after killing or assisting a kill will be the next phase track
