@@ -1,7 +1,7 @@
 This .pem file is meant to allow the program
-to connect to the LoL API without disabling all
-security checks. Unfortunately, I have not been
+to connect to the LoL API without disabling the
+certificate checks. Unfortunately, I have not been
 able to get it to work, and have left it here for
-future attempts. For now, the internet security checks
+future attempts. For now, the internet certificate checks
 for the LoL API are disabled to allow the program to
 function.

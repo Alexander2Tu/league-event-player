@@ -15,8 +15,8 @@ import urllib.request
 # Custom-installed modules
 import pygame
 
-
-BACKUP_NAME = 'UnwiseSpending#NA1'
+# This name will be used for spectator, when the API cannot return the currentPlayer details
+BACKUP_NAME = 'YourUsernameHere#Tag'
 
 
 class LeagueEvent:
@@ -218,8 +218,7 @@ class LeagueEvent:
                             self._player.set_duration(10)
 
                         if keyword in self._score_check_list:
-                            print(f'{keyword} VALUES DIFFER; PLAYING SOUND')
-                            print(f'More specifically, {self._stats_dict[keyword]} is greater than {self._old_stats_dict[keyword]} {keyword}')
+                            print(f'|{keyword}| values changed from {self._old_stats_dict[keyword]} to {self._stats_dict[keyword]};\nPLAYING random {keyword} SOUND')
                             self._play_event(keyword)
 
         if len(self._stats_dict) != 0:
@@ -509,6 +508,7 @@ def run():
     try:
         LeagueEvent().run()
     except Exception as error:
+        print(f'The program has crashed unexpectedly; the program will now print the exception and its traceback.')
         print(error)
         traceback.print_exc()
         input()
