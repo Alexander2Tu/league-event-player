@@ -23,14 +23,14 @@ class LeagueEvent:
     def __init__(self):
 
         # Available checks: 'kills', 'deaths', 'assists', 'creepScore', 'wardScore'
-        # Note: creepScore only updates every 10 CS!
+        # Note: creepScore only updates every 10 CS! wardScore updates seemingly randomly...
         self._score_check_list = ['kills', 'deaths', 'assists', 'creepScore']
         
         self._data_dict = None
         self._old_dict = None
         
-        self._player_dict = None
-        self._old_player_dict = None
+        self._user_dict = None
+        self._old_user_dict = None
         
         self._stats_dict = dict()
         self._old_stats_dict = dict()
@@ -45,7 +45,7 @@ class LeagueEvent:
         
         self._counter = 0
         self._seconds = 0
-        self._error_count = 1
+        self._error_count = 0
 
         self._setup_all_settings()
         # Creates the following:
@@ -57,30 +57,29 @@ class LeagueEvent:
 
         print('Initialized all settings!')
 
-        
-
-
-
 
     def run(self) -> None:
         '''Runs the LeagueEvent Client'''
-        self._setup_player()
-        print('Set up music player!')
-        pygame.init()
-        self._clock = pygame.time.Clock()
-        pygame.mixer.init()
-        print('Set up pygame!')
-        self._run_player()
-        self._stop_player()
+        self._initialize_prerun_resources()
 
         print('Running application!')
         try:
             self._loop()
-
         finally:
             print(self._data_dict)
-        
-        
+
+
+    def _initialize_prerun_resources(self):
+        self._setup_player()
+        print('Set up music player!')
+
+        pygame.init()
+        self._clock = pygame.time.Clock()
+        pygame.mixer.init()
+        print('Set up pygame!')
+
+        self._test_run_player()
+
 
     def _loop(self) -> None:
         '''Runs the loop for the LeagueEvent Client'''
@@ -94,7 +93,7 @@ class LeagueEvent:
             self._update_stats()
             self._check_stats()
 
-            self._player.update_all()
+            self._music_player.update_all()
 
 
     def _handle_events(self) -> None:
@@ -109,8 +108,8 @@ class LeagueEvent:
         if self._counter > self._update_rate:
             self._counter = 0
 
-            if self._player.get_duration() != 0:
-                self._player.tick()
+            if self._music_player.get_duration() != 0:
+                self._music_player.tick()
 
 
     def _tick_events(self, interval: int) -> None:
@@ -140,31 +139,31 @@ class LeagueEvent:
             else:
                 self._current_name = BACKUP_NAME
                 
-            self._player_dict = self._find_player(self._data_dict)
+            self._user_dict = self._find_user(self._data_dict)
 
             if self._old_dict != None:
-                self._old_player_dict = self._find_player(self._old_dict)
+                self._old_user_dict = self._find_user(self._old_dict)
 
 
-            # Updates all stats in player scores
-            for keyword in self._player_dict['scores']:
+            # Updates all stats in user scores
+            for keyword in self._user_dict['scores']:
 
-                if self._old_player_dict != None:
-                    self._old_stats_dict[keyword] = self._old_player_dict['scores'][keyword]
+                if self._old_user_dict != None:
+                    self._old_stats_dict[keyword] = self._old_user_dict['scores'][keyword]
 
-                self._stats_dict[keyword] = self._player_dict['scores'][keyword]
+                self._stats_dict[keyword] = self._user_dict['scores'][keyword]
 
 
             # Updates all other stats that aren't in scores or dictionaries
-            for keyword in self._player_dict:
+            for keyword in self._user_dict:
                 keyword_type = type(keyword)
                 forbidden_types = [list, dict]
 
                 if keyword_type not in forbidden_types:
-                    if self._old_player_dict != None:
-                        self._old_stats_dict[keyword] = self._old_player_dict[keyword]
+                    if self._old_user_dict != None:
+                        self._old_stats_dict[keyword] = self._old_user_dict[keyword]
 
-                    self._stats_dict[keyword] = self._player_dict[keyword]
+                    self._stats_dict[keyword] = self._user_dict[keyword]
 
 
         self._update_kda()
@@ -207,15 +206,15 @@ class LeagueEvent:
 
     def _check_stats(self) -> None:
         '''When run, checks the stats to see if they match up with old stats; performs an event if not'''
-        if self._player_dict != None:
-            for keyword in self._player_dict['scores']:
+        if self._user_dict != None:
+            for keyword in self._user_dict['scores']:
             
                 if keyword in self._old_stats_dict:
                 
                     if self._stats_dict[keyword] > self._old_stats_dict[keyword]:
 
                         if keyword == 'kills' or keyword == 'assists':
-                            self._player.set_duration(10)
+                            self._music_player.set_duration(10)
 
                         if keyword in self._score_check_list:
                             print(f'|{keyword}| values changed from {self._old_stats_dict[keyword]} to {self._stats_dict[keyword]};\nPLAYING random {keyword} SOUND')
@@ -230,7 +229,7 @@ class LeagueEvent:
         and player status (recent kills or death timer)'''
         solo_phase = self._current_phase
 
-        if self._player.get_duration() != 0:
+        if self._music_player.get_duration() != 0:
             solo_phase += 1
 
         if self._stats_dict['isDead'] == True:
@@ -241,10 +240,10 @@ class LeagueEvent:
         if solo_phase < 0:
             solo_phase = 0
 
-        if solo_phase > len(self._player.get_channels()) - 1:
-            solo_phase = len(self._player.get_channels()) - 1
+        if solo_phase > len(self._music_player.get_channels()) - 1:
+            solo_phase = len(self._music_player.get_channels()) - 1
 
-        self._player.solo(solo_phase)
+        self._music_player.solo(solo_phase)
 
 
 
@@ -260,9 +259,6 @@ class LeagueEvent:
                 
         chosen_sound = random.choice(event_sounds)
         self._play_sound(chosen_sound)
-        
-
-        
 
 
     def _play_sound(self, path: Path) -> None:
@@ -272,8 +268,7 @@ class LeagueEvent:
         sound_file.play(0)
         
 
-
-    def _find_player(self, data_dict: dict) -> None:
+    def _find_user(self, data_dict: dict) -> 'Player Dict' or None:
         '''When run, finds the player in the self._data_dict and returns that subdictionary'''
         for champ_dict in data_dict['allPlayers']:
             if champ_dict['summonerName'] == self._current_name:
@@ -331,38 +326,48 @@ class LeagueEvent:
 
         # urllib.error.URLError
         except:
-            print(f'\rError Connecting ({self._error_count}); trying again in 5 seconds...', end='')
-            if self._player != None:
-                self._stop_player()
-                
-            time.sleep(5)
             self._error_count += 1
+            print(f'\rError Connecting ({self._error_count}); trying again in 5 seconds...', end='')
+
+            if self._music_player != None:
+                self._stop_player()
+
             self._connected = False
+            time.sleep(5)
+
 
 
     def _setup_player(self) -> None:
-        '''When called, sets up the music player for the client'''
+        '''When called, sets up the music player for the client, pulling
+        all files from ./music/kda and loading them'''
         # directory is 'music/kda'
         music_list = []
         for path in Path('music//kda//' + self._music_folder_name).iterdir():
             if path.is_file():
                 music_list.append(path)
 
-        
-        self._player = dep_music.MusicPlayer(music_list)
+        self._music_player = dep_music.MusicPlayer(music_list)
+
+
+
+    def _test_run_player(self) -> None:
+        '''When called, tests to see if player can run successfully;
+        may raise a NonMusicFileType exception'''
+        self._run_player()
+        self._stop_player()
 
 
     def _run_player(self) -> None:
         '''When called, runs the music player'''
-        if self._player.get_running() == False:
-            self._player.run(True)
+        if self._music_player.get_running() == False:
+            self._music_player.run(True)
             self._adjust_volume(self._volume_list)
-            self._player.solo(0)
+            self._music_player.solo(0)
 
 
     def _stop_player(self) -> None:
         '''When called, stops the music player'''
-        self._player.stop_all()
+        self._music_player.stop_all()
 
 
     def _adjust_volume(self, volume_list: list[float]) -> None:
@@ -370,7 +375,7 @@ class LeagueEvent:
         index = 0
         for volume in volume_list:
             try:
-                self._player.set_volume(index, volume)
+                self._music_player.set_volume(index, volume)
                 
             except IndexError:
                 print(f'Invalid index {index} for volume of music')
@@ -400,7 +405,7 @@ class LeagueEvent:
 
             except IndexError:
                 print('settings.txt exists, but is malformed in format.')
-                print('Please follow the example_settings.txt for corrent formatting of settings.')
+                print('Please follow the example_settings.txt for correct formatting of settings.')
                 self._running = False
 
 

@@ -106,17 +106,15 @@ class MusicPlayer:
 
     def solo_fade(self, sound_num: int) -> None:
         '''Given a sound number, will unmute song at sound number, and
-        mute the rest of the sounds in the list'''
+        mute the rest of the sounds in the list, but with a transition (UNFINISHED)'''
         self.mute_all()
         self._mute_list[sound_num] = False
-
 
 
     def mute_all(self) -> None:
         '''When called, mutes all sounds (updates the mute list)'''
         for mute_index in range(0, len(self._mute_list)):
             self._mute_list[mute_index] = True
-
 
 
     def get_mute(self, sound_num: int) -> bool:
@@ -130,7 +128,6 @@ class MusicPlayer:
             print(f'ERROR: INVALID INDEX FOR SOUND OBJECT (get_mute)')
 
 
-
     def mute(self, sound_num: int) -> None:
         '''Given a sound number, will mute the track at that index (0 included)'''
         try:
@@ -140,17 +137,13 @@ class MusicPlayer:
             print(f'ERROR: CANNOT MUTE THE TRACK AT {sound_num}; THERE ARE {len(self._channel_list)} channels, starting from 0!')
 
 
-
     def unmute(self, sound_num: int) -> None:
         '''Given a sound number, will unmute the track at that index
         (0 included)'''
-        
         try:
             self._mute_list[sound_num] = False
-
         except IndexError:
             print(f'ERROR: CANNOT UNMUTE THE TRACK AT {sound_num}; THERE ARE {len(self._channel_list)} channels, starting from 0!')
-
 
 
     def get_volume(self, sound_num: int) -> None:
@@ -167,7 +160,6 @@ class MusicPlayer:
         at that sound channel to the volume amount'''
         self._volume_list[sound_num] = volume
         
-
 
     def get_channels(self) -> list['Channels']:
         '''When called, returns the list of all channels'''
@@ -203,7 +195,6 @@ class MusicPlayer:
             self.play_all()
 
 
-
     def _update_volume(self) -> None:
         '''When called, updates the volume for each song'''
         for sound_index in range(0, len(self._sound_list)):
@@ -218,7 +209,6 @@ class MusicPlayer:
                 current_sound.set_volume(0.0)
             
 
-
     def _init_all(self) -> None:
         '''Initializes all pygame modules that this program needs'''
         pygame.init()
@@ -229,41 +219,23 @@ class MusicPlayer:
     def _create_all_attributes(self) -> None:
         '''When called, creates all attributes'''
         self._create_channels()
-        self._create_sounds()
-        self._create_volume_list()
-        self._create_mute_list()
+        self._initialize_music_lists()
 
 
     def _create_channels(self) -> None:
         '''When called, creates channels and assigns them to self._channel_list'''
         self._channel_list = self._make_channels(len(self._song_list), 3)
 
-    
-    def _create_sounds(self) -> None:
-        '''When called, creates sound objects and assigns them to
-        self._sound_list'''
-        sound_list = []
-        for song in self._song_list:
-            sound_list.append(pygame.mixer.Sound(song))
 
-        self._sound_list = sound_list
-
-
-    def _create_volume_list(self) -> None:
-        '''When called, creates an attribute to keep track of volumes
-        in the form of self._volume_list'''
+    def _initialize_music_lists(self):
+        '''When called, creates three lists: sound_list,
+        volume_list, and mute_list'''
+        self._sound_list = []
         self._volume_list = []
-
-        for song in self._song_list:
-            self._volume_list.append(1.0)
-
-
-    def _create_mute_list(self) -> None:
-        '''When called, creates an attribute to keep track of mute booleans
-        in the form of self._mute_list'''
         self._mute_list = []
-
         for song in self._song_list:
+            self._sound_list.append(pygame.mixer.Sound(song))
+            self._volume_list.append(1.0)
             self._mute_list.append(False)
 
 
@@ -377,9 +349,9 @@ def get_file_input() -> list['Songs']:
 def get_loop() -> bool:
     '''Gets user input for whether or not the songs will loop indefinitely'''
     
-    yes_list = ['YES', 'SURE', 'AFFIRMATIVE', 'TRUE', 'YEAH', 'PLEASE', 'HAI',
-                'YEP', 'PERCHANCE']
-    no_list = ['NO', 'NOPE', 'NAH', 'FALSE', 'NEGATIVE', 'IYA']
+    yes_list = ['YES', 'SURE', 'AFFIRMATIVE', 'TRUE', 'YEAH', 'PLEASE',
+                'YEP', 'PERCHANCE', 'Y']
+    no_list = ['NO', 'NOPE', 'NAH', 'FALSE', 'NEGATIVE', 'N']
 
     while True:
         loop_input = input('Do you want loop? ')
@@ -409,6 +381,8 @@ def _list_in_str(str_list: list[str], term: str) -> bool:
 class DurationAlreadyZeroError(Exception):
     pass
 
+class NonMusicFileType(Exception):
+    pass
 
 if __name__ == '__main__':
-    sample_song_list = [Path('..//Multi Music Player//music//moonlight//1moonlight_vocals.mp3')]
+    pass
