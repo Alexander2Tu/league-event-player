@@ -357,7 +357,7 @@ class LeagueEvent:
         if self._player.get_running() == False:
             self._player.run(True)
             self._adjust_volume(self._volume_list)
-            self._player.solo(self._current_phase)
+            self._player.solo(0)
 
 
     def _stop_player(self) -> None:
