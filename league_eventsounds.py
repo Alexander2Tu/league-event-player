@@ -21,7 +21,6 @@ BACKUP_NAME = 'YourUsernameHere#Tag'
 
 class LeagueEvent:
     def __init__(self):
-
         # Available checks: 'kills', 'deaths', 'assists', 'creepScore', 'wardScore'
         # Note: creepScore only updates every 10 CS! wardScore updates seemingly randomly...
         self._score_check_list = ['kills', 'deaths', 'assists', 'creepScore']
@@ -91,6 +90,9 @@ class LeagueEvent:
             self._tick_events(0)
             
             self._update_stats()
+            self._update_kda()
+            self._update_phase()
+
             self._check_stats()
 
             self._music_player.update_all()
@@ -166,7 +168,7 @@ class LeagueEvent:
                     self._stats_dict[keyword] = self._user_dict[keyword]
 
 
-        self._update_kda()
+
 
 
 
@@ -185,7 +187,7 @@ class LeagueEvent:
 
             #print(f'Current KDA: {self._current_kda}')
 
-            self._update_phase()
+
                 
 
     def _update_phase(self) -> None:
@@ -208,9 +210,7 @@ class LeagueEvent:
         '''When run, checks the stats to see if they match up with old stats; performs an event if not'''
         if self._user_dict != None:
             for keyword in self._user_dict['scores']:
-            
                 if keyword in self._old_stats_dict:
-                
                     if self._stats_dict[keyword] > self._old_stats_dict[keyword]:
 
                         if keyword == 'kills' or keyword == 'assists':
