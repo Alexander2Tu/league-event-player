@@ -20,6 +20,9 @@ BACKUP_NAME = 'YourUsernameHere#Tag'
 
 
 class LeagueEvent:
+    #
+    # Initialization
+    #
     def __init__(self):
         # Available checks: 'kills', 'deaths', 'assists', 'creepScore', 'wardScore'
         # Note: creepScore only updates every 10 CS! wardScore updates seemingly randomly...
@@ -65,6 +68,8 @@ class LeagueEvent:
         try:
             self._loop()
         finally:
+            if self._music_player is not None:
+                self._stop_player()
             print(self._data_dict)
 
 
@@ -79,19 +84,21 @@ class LeagueEvent:
 
         self._test_run_player()
 
-
+    #
+    # Loop
+    #
     def _loop(self) -> None:
         '''Runs the loop for the LeagueEvent Client'''
         while self._running:
-            self._clock.tick(self._update_rate)
+            self._clock.tick(self._update_rate)  # Regulate while loop to self._update_rate
             
             self._handle_events()
-            self._tick()
-            self._tick_events(0)
-            
-            self._update_stats()
-            self._update_kda()
-            self._update_phase()
+            self._tick()                         # Counting down time in music player
+
+            if self._check_api():                # If API had valid response
+                if self._update_stats():         # If user info was able to be found
+                    self._update_kda()
+                    self._update_phase()
 
             self._check_stats()
 
@@ -104,7 +111,7 @@ class LeagueEvent:
 
 
     def _tick(self) -> None:
-        '''When run, increases self._counter by one, reseting to 0 once self._update_rate is reached'''
+        '''When run, increases self._counter by one, resetting to 0 once self._update_rate is reached'''
         self._counter += 1
 
         if self._counter > self._update_rate:
@@ -114,47 +121,87 @@ class LeagueEvent:
                 self._music_player.tick()
 
 
-    def _tick_events(self, interval: int) -> None:
-        '''When run, checks the League API every integer time interval specified'''
-        if interval < 1:
-            self._check_api()
-            
+    def _check_api(self) -> bool:
+        '''When ran, consults the League API and assigns the data dictionary to self._data_dict,
+        returning boolean for whether connection was successful'''
+        text_data = self._api_send_receive('https://127.0.0.1:2999/liveclientdata/allgamedata', [])
+
+        if text_data is not None:
+            if self._connected is False:
+                print('\nConnection reestablished!')
+                self._connected = True
+                self._error_count = 0
+
+            self._run_player()
+
+            dict_data = text_to_json(text_data)
+            if self._check_file_integrity(dict_data) is False:
+                print('Invalid API response found; skipping...')
+                return False
+
+            # Store values
+            self._old_dict = self._data_dict
+            self._old_user_dict = self._user_dict
+
+            self._data_dict = dict_data
+            return True
+
         else:
-            if self._counter >= self._update_rate:
-                self._seconds += 1
+            return False
 
-            if self._seconds >= interval:
-                self._check_api()
-                self._seconds = 0
+            # print(f'DEBUG: {self._data_dict}')
 
 
+    def _check_file_integrity(self, league_dict: dict) -> bool:
+        '''Given a dictionary from the LoL API, returns boolean for
+        whether it conforms to expectations'''
+        # Need to check for None, having activePlayer, and having scores
+        if league_dict is None:
+            print('Error: API response is None!')
+            return False
+        elif 'activePlayer' not in league_dict:
+            print('Error: API response does not have activePlayer field!')
+            return False
+        elif 'allPlayers' not in league_dict or 'summonerName' not in league_dict['allPlayers'][0]:
+            print('Error: API response does not have allPlayers or summonerName field!')
+            return False
+        elif 'summonerName' not in league_dict['activePlayer']:
+            return True
+        else:
+            return True
 
 
-    def _update_stats(self) -> None:
+    def _update_stats(self) -> bool:
         '''When run, updates the self._stats_dict and self._old_stats_dict
-        in accordance with current data'''
-        if self._data_dict != None:
+        in accordance with current data; returns boolean for successful running'''
+        if self._data_dict is not None:
+            # Update the current name
             info_dict = self._data_dict
+            backup_used = False
             if 'summonerName' in info_dict['activePlayer']:
                 self._current_name = info_dict['activePlayer']['summonerName']
-
             else:
                 self._current_name = BACKUP_NAME
+                backup_used = True
                 
-            self._user_dict = self._find_user(self._data_dict)
+            user_dict = self._find_user(self._data_dict)
+            if user_dict == None:
+                print(f'Could not find the user with username {self._current_name}', end='')
+                if backup_used:
+                    print(f'; please check that the backup username {BACKUP_NAME} corresponds to a player in the lobby.')
+                else:
+                    print(' in the lobby.')
+                prompt_user_continue()
+                return False
 
-            if self._old_dict != None:
-                self._old_user_dict = self._find_user(self._old_dict)
-
+            self._user_dict = user_dict
 
             # Updates all stats in user scores
             for keyword in self._user_dict['scores']:
-
-                if self._old_user_dict != None:
+                if self._old_user_dict is not None:
                     self._old_stats_dict[keyword] = self._old_user_dict['scores'][keyword]
 
                 self._stats_dict[keyword] = self._user_dict['scores'][keyword]
-
 
             # Updates all other stats that aren't in scores or dictionaries
             for keyword in self._user_dict:
@@ -167,9 +214,7 @@ class LeagueEvent:
 
                     self._stats_dict[keyword] = self._user_dict[keyword]
 
-
-
-
+            return True
 
 
     def _update_kda(self) -> None:
@@ -275,31 +320,9 @@ class LeagueEvent:
                 return champ_dict
 
         print('FAILED TO FIND PLAYER')
+        return None
         
 
-
-    def _check_api(self):
-        '''When ran, consults the League API and assigns the data dictionary to self._data_dict'''
-        text_data = self._api_send_receive('https://127.0.0.1:2999/liveclientdata/allgamedata', [])
-
-        if text_data != None:
-            if self._connected == False:
-                print('Connection reestablished!')
-                self._connected = True
-                self._error_count = 0
-
-            
-            self._run_player()
-                
-            dict_data = text_to_json(text_data)
-
-            if self._data_dict != None:
-                self._old_dict = self._data_dict
-            
-            self._data_dict = dict_data
-
-            #print(f'DEBUG: {self._data_dict}')
-        
 
 
 
@@ -327,13 +350,18 @@ class LeagueEvent:
         # urllib.error.URLError
         except:
             self._error_count += 1
-            print(f'\rError Connecting ({self._error_count}); trying again in 5 seconds...', end='')
 
             if self._music_player != None:
                 self._stop_player()
 
             self._connected = False
-            time.sleep(5)
+            for i in range(5, 0, -1):
+                if i > 1:
+                    print(f'\rError Connecting ({self._error_count}); trying again in {i} seconds...', end='')
+                else:
+                    print(f'\rError Connecting ({self._error_count}); trying again in {i} second...', end='')
+                time.sleep(1)
+
 
 
 
@@ -507,7 +535,8 @@ def text_to_json(text: str) -> 'list or dict':
     '''Given text data, converts and returns it in dictionary or list format'''
     return json.loads(text)    
 
-
+def prompt_user_continue():
+    input('Press ENTER to continue.')
 
 def run():
     try:
