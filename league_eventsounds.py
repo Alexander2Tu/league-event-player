@@ -27,30 +27,27 @@ class LeagueEvent:
         # Available checks: 'kills', 'deaths', 'assists', 'creepScore', 'wardScore'
         # Note: creepScore only updates every 10 CS! wardScore updates seemingly randomly...
         self._score_check_list = ['kills', 'deaths', 'assists', 'creepScore']
-        
-        self._data_dict = None
+
+        self._data_dict = None  # Raw data from API
         self._old_dict = None
-        
-        self._user_dict = None
+        self._user_dict = None  # Subset of API data for user
         self._old_user_dict = None
-        
-        self._stats_dict = dict()
+        self._stats_dict = dict()  # Subset of user API data for KDA stats
         self._old_stats_dict = dict()
 
-        self._current_name = None
-        
+        self._current_name = None  # Name of current user (live game or backup)
         self._current_kda = 0
-        self._current_phase = 0
+        self._current_phase = 0    # Derived from kda + thresholds
+        self._event_sound_dict = dict()  # Contains file paths for all event sounds
         
-        self._running = True
-        self._connected = True
-        
+        self._running = True       # True while running, False to end
+        self._connected = True     # True while API active, False while no response
         self._counter = 0
         self._seconds = 0
         self._error_count = 0
 
         self._setup_all_settings()
-        # Creates the following:
+        # Creates the following (from settings.txt & profile settings):
         # self._update_rate
         # self._volume
         # self._volume_list
@@ -63,6 +60,8 @@ class LeagueEvent:
     def run(self) -> None:
         '''Runs the LeagueEvent Client'''
         self._initialize_prerun_resources()
+        if self._is_terminated():
+            return
 
         print('Running application!')
         try:
@@ -70,11 +69,13 @@ class LeagueEvent:
         finally:
             if self._music_player is not None:
                 self._stop_player()
-            print(self._data_dict)
 
 
     def _initialize_prerun_resources(self):
         self._setup_player()
+        if self._is_terminated():
+            print('ERROR: Music player setup failed!')
+            return
         print('Set up music player!')
 
         pygame.init()
@@ -157,7 +158,7 @@ class LeagueEvent:
         whether it conforms to expectations'''
         # Need to check for None, having activePlayer, and having scores
         if league_dict is None:
-            print('Error: API response is None!')
+            print('Error: API response failed to respond!')
             return False
         elif 'activePlayer' not in league_dict:
             print('Error: API response does not have activePlayer field!')
@@ -198,12 +199,13 @@ class LeagueEvent:
 
             # Updates all stats in user scores
             for keyword in self._user_dict['scores']:
-                if self._old_user_dict is not None:
-                    self._old_stats_dict[keyword] = self._old_user_dict['scores'][keyword]
-
+                if self._old_user_dict is not None:  # Ensure _stats_dict is initialized
+                    self._old_stats_dict[keyword] = self._stats_dict[keyword]
                 self._stats_dict[keyword] = self._user_dict['scores'][keyword]
 
             # Updates all other stats that aren't in scores or dictionaries
+            # (Will re-add later if other stats needed)
+            '''
             for keyword in self._user_dict:
                 keyword_type = type(keyword)
                 forbidden_types = [list, dict]
@@ -213,7 +215,7 @@ class LeagueEvent:
                         self._old_stats_dict[keyword] = self._old_user_dict[keyword]
 
                     self._stats_dict[keyword] = self._user_dict[keyword]
-
+            '''
             return True
 
 
@@ -247,12 +249,16 @@ class LeagueEvent:
 
             phase_value += 1
 
+        # Put a cap on the phase value based on num of music tracks;
+        # thresholds may be misaligned with num of tracks
+        max_track_index = len(self._music_player.get_channels()) - 1
+        self._current_phase = min(max_track_index, self._current_phase)
         #print(f'Current Phase: {self._current_phase}')
         
 
 
     def _check_stats(self) -> None:
-        '''When run, checks the stats to see if they match up with old stats; performs an event if not'''
+        """When run, checks the stats to see if they match up with old stats; performs an event if not"""
         if self._user_dict != None:
             for keyword in self._user_dict['scores']:
                 if keyword in self._old_stats_dict:
@@ -270,51 +276,61 @@ class LeagueEvent:
 
 
     def _play_phase(self) -> None:
-        '''When called, unmutes music appropriate to the current phase
-        and player status (recent kills or death timer)'''
+        """When called, unmutes music appropriate to the current phase
+        and player status (recent kills or death timer)"""
         solo_phase = self._current_phase
-
-        if self._music_player.get_duration() != 0:
-            solo_phase += 1
 
         if self._stats_dict['isDead'] == True:
             solo_phase = 0
+        else:
+            # Cannot get kill music bonus while dead
+            if self._music_player.get_duration() != 0:
+                solo_phase += 1
 
         # Boundaries; if less than phase 0, turn 0, more than max,
         #  turn max phase
-        if solo_phase < 0:
-            solo_phase = 0
-
-        if solo_phase > len(self._music_player.get_channels()) - 1:
-            solo_phase = len(self._music_player.get_channels()) - 1
+        max_track_index = len(self._music_player.get_channels()) - 1
+        solo_phase = max(0, solo_phase)
+        solo_phase = min(max_track_index, solo_phase)
 
         self._music_player.solo(solo_phase)
 
 
-
-
     def _play_event(self, event: str) -> None:
-        '''Given an event keyword, plays the sound associated with it'''
+        """Given an event keyword, plays the sound associated with it"""
+        if event not in self._event_sound_dict:
+            self._initialize_event_sound_dict(event)
+
+        event_sounds = self._event_sound_dict[event]
+        try:
+            chosen_sound = random.choice(event_sounds)
+            self._play_sound(chosen_sound)
+        except IndexError:
+            print(f'Error: The event sound |{event}| folder is empty, cannot play sound.')
+        except Exception as e:
+            print(f"An unknown exception occurred while trying"
+                  f"to play an event sound |{event}|: {type(e).__name__} – {e}")
+
+
+    def _initialize_event_sound_dict(self, event: str) -> dict:
         event_sounds = []
         path_string = 'sounds//'
         path_string += event
-
         for file_path in Path(path_string).iterdir():
-                event_sounds.append(file_path)
-                
-        chosen_sound = random.choice(event_sounds)
-        self._play_sound(chosen_sound)
+            event_sounds.append(file_path)
+
+        self._event_sound_dict[event] = event_sounds
 
 
     def _play_sound(self, path: Path) -> None:
-        '''When given a Path, plays the sound at that path'''
+        """When given a Path, plays the sound at that path"""
         sound_file = pygame.mixer.Sound(path.open('r'))
         sound_file.set_volume(self._volume)
         sound_file.play(0)
         
 
     def _find_user(self, data_dict: dict) -> 'Player Dict' or None:
-        '''When run, finds the player in the self._data_dict and returns that subdictionary'''
+        """When run, finds the player in the self._data_dict and returns that subdictionary"""
         for champ_dict in data_dict['allPlayers']:
             if champ_dict['summonerName'] == self._current_name:
                 return champ_dict
@@ -323,12 +339,8 @@ class LeagueEvent:
         return None
         
 
-
-
-
-
     def _api_send_receive(self, url: str, header_list: list[tuple[str]]) -> str:
-        '''Given a url and header list, returns the text data at the url'''
+        """Given a url and header list, returns the text data at the url"""
         try:
             ctx = ssl.create_default_context()
 
@@ -363,8 +375,6 @@ class LeagueEvent:
                 time.sleep(1)
 
 
-
-
     def _setup_player(self) -> None:
         '''When called, sets up the music player for the client, pulling
         all files from ./music/kda and loading them'''
@@ -373,9 +383,14 @@ class LeagueEvent:
         for path in Path('music//kda//' + self._music_folder_name).iterdir():
             if path.is_file():
                 music_list.append(path)
-
-        self._music_player = dep_music.MusicPlayer(music_list)
-
+        try:
+            self._music_player = dep_music.MusicPlayer(music_list)
+        except dep_music.EmptyMusicPlaylistError:
+            print(f'ERROR: Music player failed to find music tracks in '
+                  f'"music/kda/{self._music_folder_name}", please check that '
+                  f'the music folder is non-empty.')
+            self._running = False
+            prompt_user_continue()
 
 
     def _test_run_player(self) -> None:
@@ -388,9 +403,16 @@ class LeagueEvent:
     def _run_player(self) -> None:
         '''When called, runs the music player'''
         if self._music_player.get_running() == False:
-            self._music_player.run(True)
-            self._adjust_volume(self._volume_list)
-            self._music_player.solo(0)
+            try:
+                self._music_player.run(True)
+                self._adjust_volume(self._volume_list)
+                self._music_player.solo(0)
+            except pygame.error:
+                print(f'Music player failed to run on provided music tracks in '
+                      f'"music/kda/{self._music_folder_name}", please check that all '
+                      f'tracks are valid music files.')
+                prompt_user_continue()
+                self._running = False
 
 
     def _stop_player(self) -> None:
@@ -475,6 +497,10 @@ class LeagueEvent:
                 self._kda_thresholds.sort()
                 #print(f'KDA thresholds are now: {self._kda_thresholds}')
 
+    def _is_terminated(self) -> bool:
+        """Returns True if self._running is False; False otherwise"""
+        return self._running is False
+
 
 def str_to_list(list_str: str, correct_type: type) -> list:
     '''Given a string in list format, returns it in list form'''
@@ -543,10 +569,9 @@ def run():
         LeagueEvent().run()
     except Exception as error:
         print(f'The program has crashed unexpectedly; the program will now print the exception and its traceback.')
-        print(error)
+        print(f'{type(error).__name__}: {error}')
         traceback.print_exc()
-        input()
-        input()
+        prompt_user_continue()
 
 
 

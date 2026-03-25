@@ -16,7 +16,8 @@ DELAY = 0.01
 class MusicPlayer:
     def __init__(self, song_list: list['Songs']):
         # Note: The list of songs should be in order
-        
+        if len(song_list) == 0:
+            raise EmptyMusicPlaylistError
         self._song_list = song_list
         self._duration = 0
         self._running = False
@@ -382,6 +383,9 @@ class DurationAlreadyZeroError(Exception):
     pass
 
 class NonMusicFileType(Exception):
+    pass
+
+class EmptyMusicPlaylistError(Exception):
     pass
 
 if __name__ == '__main__':
