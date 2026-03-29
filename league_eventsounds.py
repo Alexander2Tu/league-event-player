@@ -204,18 +204,18 @@ class LeagueEvent:
                 self._stats_dict[keyword] = self._user_dict['scores'][keyword]
 
             # Updates all other stats that aren't in scores or dictionaries
-            # (Will re-add later if other stats needed)
-            '''
+            # Needed for isDead
+
             for keyword in self._user_dict:
                 keyword_type = type(keyword)
                 forbidden_types = [list, dict]
 
                 if keyword_type not in forbidden_types:
-                    if self._old_user_dict != None:
+                    if self._old_user_dict is not None:
                         self._old_stats_dict[keyword] = self._old_user_dict[keyword]
 
                     self._stats_dict[keyword] = self._user_dict[keyword]
-            '''
+
             return True
 
 
