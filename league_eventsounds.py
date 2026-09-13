@@ -97,7 +97,7 @@ class LeagueEvent:
             self._tick()                         # Counting down time in music player
 
             if self._check_api():                # If API had valid response
-                if self._update_stats():         # If user info was able to be found
+                if self._update_stats():         # If user info was found
                     self._update_kda()
                     self._update_phase()
 
@@ -352,9 +352,9 @@ class LeagueEvent:
             for header in header_list:
                 request.add_header(header)
             
-            response = urllib.request.urlopen(request, context = ctx)
+            response = urllib.request.urlopen(request, context=ctx)
 
-            text_response = response.read().decode(encoding = 'utf-8')
+            text_response = response.read().decode(encoding='utf-8')
 
             return text_response
 
