@@ -14,30 +14,31 @@ class APICommunicator:
     def __init__(self, backup_name: str):
         self._backup_name = backup_name
 
-    def request_api(self) -> APICommunication:
+    def request_api(self, custom_response: str = None) -> APICommunication:
         """
         When ran, consults the League API and constructs
         APICommunication object; returns None if invalid format.
         """
-        text_data = self._api_send_receive(APICommunicator.LEAGUE_API_URL, [])
+        if custom_response is None:
+            text_data = self._api_send_receive(APICommunicator.LEAGUE_API_URL, [])
+        else:
+            text_data = custom_response
+
         try:
             game_data = json.loads(text_data)
-            player_name = self.find_name(game_data)
+            player_name = self._find_name(game_data)
             if player_name is None:
                 player_name = self._backup_name
 
-            player_data = self.find_player(player_name, game_data)
-            return self.construct_communication_object(player_data)
+            player_data = self._find_player(player_name, game_data)
+            return self._construct_communication_object(player_data)
         except TypeError:
             # If API response was an error
-            print('TypeError')
             return None
         except KeyError:
             # If API response is malformed
-            print('KeyError')
             return None
         except CannotFindPlayerException:
-            print('CannotFindPlayerException')
             return None
 
 
@@ -50,7 +51,7 @@ class APICommunicator:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
 
-            request = urllib.request.Request('https://127.0.0.1:2999/liveclientdata/allgamedata')
+            request = urllib.request.Request(url)
             for header in header_list:
                 request.add_header(header)
 
@@ -63,20 +64,20 @@ class APICommunicator:
         except:
             return None
 
-    def find_name(self, data_dict: dict) -> str:
+    def _find_name(self, data_dict: dict) -> str:
         try:
             return data_dict['activePlayer']['riotId']
         except KeyError:
             return None
 
-    def find_player(self, player_name: str, game_data: dict) -> dict:
+    def _find_player(self, player_name: str, game_data: dict) -> dict:
         for player_data in game_data['allPlayers']:
             if player_data['riotId'] == player_name:
                 return player_data
 
         raise CannotFindPlayerException
 
-    def construct_communication_object(self, player_data: dict) -> APICommunication:
+    def _construct_communication_object(self, player_data: dict) -> APICommunication:
         scores = player_data['scores']
         return APICommunication(kills=scores['kills'],
                                 deaths=scores['deaths'],
