@@ -2,6 +2,7 @@ import unittest
 from modules.api_communication import *
 from modules.api_communicator import *
 
+
 class TestAPICommunicator(unittest.TestCase):
     def setUp(self):
         self.communicator = APICommunicator('JohnLeague#NA1')

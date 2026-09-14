@@ -1,0 +1,3 @@
+VOLUME_LIST = [1.0, 0.9, 0.8]
+MUSIC_FOLDER_NAME = grasswalk
+KDA_THRESHOLDS = [1, 3]
