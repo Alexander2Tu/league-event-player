@@ -44,7 +44,48 @@ class TestSettingsParser(unittest.TestCase):
             verify_arguments({'Float', 0.5}, expected_types)
 
 
+    def test_settings_parser_parses_preset_correctly(self):
+        argument_dict = {'UPDATE_RATE': 30,
+                         'SFX_VOLUME': 0.5,
+                         'MUSIC_PRESET': 'grasswalk_preset'}
+        parse_music_preset_settings(argument_dict, '.\\testing_files')
+        self.assertEqual(argument_dict['VOLUME_LIST'], [1.0, 0.9, 0.8])
+        self.assertEqual(argument_dict['MUSIC_FOLDER_NAME'], 'grasswalk')
+        self.assertEqual(argument_dict['KDA_THRESHOLDS'], [1, 3])
 
+
+    def test_construct_settings_object(self):
+        argument_dict = {'UPDATE_RATE': 30,
+                         'SFX_VOLUME': 0.5,
+                         'MUSIC_PRESET': 'grasswalk_preset',
+                         'VOLUME_LIST': [1.0, 0.9, 0.8],
+                         'MUSIC_FOLDER_NAME': 'grasswalk',
+                         'KDA_THRESHOLDS': [1, 3]}
+        settings_obj = construct_settings_object(argument_dict)
+        self.assertEqual(type(settings_obj), Settings)
+        self.assertEqual(argument_dict['UPDATE_RATE'], settings_obj.update_rate)
+        self.assertEqual(argument_dict['SFX_VOLUME'], settings_obj.sfx_volume)
+        self.assertEqual(argument_dict['MUSIC_PRESET'], settings_obj.music_preset)
+        self.assertEqual(argument_dict['VOLUME_LIST'], settings_obj.music_volume_list)
+        self.assertEqual(argument_dict['MUSIC_FOLDER_NAME'], settings_obj.music_folder_name)
+        self.assertEqual(argument_dict['KDA_THRESHOLDS'], settings_obj.kda_threshold_list)
+
+
+    def test_full_parsing(self):
+        settings_obj = parse_all_settings('.\\testing_files\\settings2.txt', '.\\testing_files')
+        argument_dict = {'UPDATE_RATE': 30,
+                         'SFX_VOLUME': 0.5,
+                         'MUSIC_PRESET': 'grasswalk_preset',
+                         'VOLUME_LIST': [1.0, 0.9, 0.8],
+                         'MUSIC_FOLDER_NAME': 'grasswalk',
+                         'KDA_THRESHOLDS': [1, 3]}
+        self.assertEqual(type(settings_obj), Settings)
+        self.assertEqual(argument_dict['UPDATE_RATE'], settings_obj.update_rate)
+        self.assertEqual(argument_dict['SFX_VOLUME'], settings_obj.sfx_volume)
+        self.assertEqual(argument_dict['MUSIC_PRESET'], settings_obj.music_preset)
+        self.assertEqual(argument_dict['VOLUME_LIST'], settings_obj.music_volume_list)
+        self.assertEqual(argument_dict['MUSIC_FOLDER_NAME'], settings_obj.music_folder_name)
+        self.assertEqual(argument_dict['KDA_THRESHOLDS'], settings_obj.kda_threshold_list)
 
 
 if __name__ == '__main__':
