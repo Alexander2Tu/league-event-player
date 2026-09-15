@@ -27,7 +27,8 @@ def parse_main_settings(argument_dict: dict, main_settings_path: str) -> None:
 
     main_type_dict = {'UPDATE_RATE': int,
                       'SFX_VOLUME': float,
-                      'MUSIC_PRESET': str}
+                      'MUSIC_PRESET': str,
+                      'BACKUP_NAME': str}
     verify_arguments(argument_dict, main_type_dict, 'Main')
 
 
@@ -89,6 +90,7 @@ def _parse_argument_value(variable_name: str, value: str) -> 'MysteryType':
     type_dict = {'UPDATE_RATE': int,
                  'SFX_VOLUME': float,
                  'MUSIC_PRESET': str,
+                 'BACKUP_NAME': str,
                  'VOLUME_LIST': list,
                  'MUSIC_FOLDER_NAME': str,
                  'KDA_THRESHOLDS': list}
@@ -104,6 +106,7 @@ def construct_settings_object(argument_dict) -> Settings:
                     update_rate=argument_dict['UPDATE_RATE'],
                     sfx_volume=argument_dict['SFX_VOLUME'],
                     music_preset=argument_dict['MUSIC_PRESET'],
+                    backup_name=argument_dict['BACKUP_NAME'],
                     music_volume_list=argument_dict['VOLUME_LIST'],
                     kda_threshold_list=argument_dict['KDA_THRESHOLDS'],
                     music_folder_name=argument_dict['MUSIC_FOLDER_NAME']

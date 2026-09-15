@@ -13,15 +13,19 @@ class TestSettingsParser(unittest.TestCase):
         volume_list = [0.99, 0.99, 0.99]
         kda_threshold_list = [1, 3]
         music_folder_name = 'grasswalk'
+        backup_name = 'JohnLeague#NA1'
 
-        obj = Settings(update_rate, volume, music_preset, volume_list, kda_threshold_list, music_folder_name)
+        obj = Settings(update_rate, volume, music_preset, backup_name,
+                       volume_list, kda_threshold_list, music_folder_name)
 
         self.assertEqual(obj.update_rate, update_rate)
         self.assertEqual(obj.sfx_volume, volume)
         self.assertEqual(obj.music_preset, music_preset)
+        self.assertEqual(obj.backup_name, backup_name)
         self.assertEqual(obj.music_volume_list, volume_list)
         self.assertEqual(obj.kda_threshold_list, kda_threshold_list)
         self.assertEqual(obj.music_folder_name, music_folder_name)
+
 
 
     def test_settings_parser_parses_main_correctly(self):
@@ -58,6 +62,7 @@ class TestSettingsParser(unittest.TestCase):
         argument_dict = {'UPDATE_RATE': 30,
                          'SFX_VOLUME': 0.5,
                          'MUSIC_PRESET': 'grasswalk_preset',
+                         'BACKUP_NAME': 'JohnLeague#NA1',
                          'VOLUME_LIST': [1.0, 0.9, 0.8],
                          'MUSIC_FOLDER_NAME': 'grasswalk',
                          'KDA_THRESHOLDS': [1, 3]}

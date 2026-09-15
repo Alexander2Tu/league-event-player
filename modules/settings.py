@@ -6,12 +6,14 @@
 class Settings:
     def __init__(self, update_rate: int,
                  sfx_volume: float, music_preset: str,
+                 backup_name: str,
                  music_volume_list: list[float],
                  kda_threshold_list: list[int], music_folder_name: str):
         # Global Settings
         self.update_rate = update_rate
         self.sfx_volume = sfx_volume
         self.music_preset = music_preset
+        self.backup_name = backup_name
 
         # Preset Settings
         self.music_volume_list = music_volume_list
