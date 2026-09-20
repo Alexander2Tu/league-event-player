@@ -1,6 +1,10 @@
 # Represents how many times the program checks the API per second
 UPDATE_RATE = 30
 
+# Enable/Disable Music or Sounds
+SFX_ENABLED = True
+MUSIC_ENABLED = True
+
 # Pick a decimal number from 0.0 to 1.0 (Volume of event sounds only)
 SFX_VOLUME = 0.50
 

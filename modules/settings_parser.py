@@ -26,10 +26,50 @@ def parse_main_settings(argument_dict: dict, main_settings_path: str) -> None:
     _parse_argument_file(main_settings_path, argument_dict)
 
     main_type_dict = {'UPDATE_RATE': int,
+                      'SFX_ENABLED': bool,
+                      'MUSIC_ENABLED': bool,
                       'SFX_VOLUME': float,
                       'MUSIC_PRESET': str,
                       'BACKUP_NAME': str}
     verify_arguments(argument_dict, main_type_dict, 'Main')
+
+
+def _parse_argument_file(file_path: str, output_dict: dict) -> None:
+    """
+    Given a file path, extracts all variables and values into the given
+    output dictionary.
+    """
+    with open(file_path, 'r') as argument_file:
+        for line in argument_file:
+            if line.strip().startswith('#') or line.count('=') != 1:
+                continue
+            else:
+                # Valid non-comment line with one = sign
+                variable, value = line.split('=')
+                output_dict[variable.strip()] = _parse_argument_value(variable, value)
+
+
+def _parse_argument_value(variable_name: str, value: str) -> 'MysteryType':
+    """
+    Given a variable name and value, returns the value corrected to the
+    correct type. If not found, keeps it a string.
+    """
+    variable_name = variable_name.strip()
+    value = value.strip()
+    type_dict = {'UPDATE_RATE': int,
+                 'SFX_ENABLED': bool,
+                 'MUSIC_ENABLED': bool,
+                 'SFX_VOLUME': float,
+                 'MUSIC_PRESET': str,
+                 'BACKUP_NAME': str,
+                 'VOLUME_LIST': list,
+                 'MUSIC_FOLDER_NAME': str,
+                 'KDA_THRESHOLDS': list}
+
+    if variable_name in type_dict and type_dict[variable_name] is not str:
+        return ast.literal_eval(value)
+    else:
+        return value
 
 
 def verify_arguments(argument_dict: dict, settings_key_dict: dict,
@@ -65,45 +105,11 @@ def parse_music_preset_settings(argument_dict: dict, music_preset_folder_path: s
     verify_arguments(argument_dict, preset_type_dict, 'Preset')
 
 
-def _parse_argument_file(file_path: str, output_dict: dict) -> None:
-    """
-    Given a file path, extracts all variables and values into the given
-    output dictionary.
-    """
-    with open(file_path, 'r') as argument_file:
-        for line in argument_file:
-            if line.strip().startswith('#') or line.count('=') != 1:
-                continue
-            else:
-                # Valid non-comment line with one = sign
-                variable, value = line.split('=')
-                output_dict[variable.strip()] = _parse_argument_value(variable, value)
-
-
-def _parse_argument_value(variable_name: str, value: str) -> 'MysteryType':
-    """
-    Given a variable name and value, returns the value corrected to the
-    correct type. If not found, keeps it a string.
-    """
-    variable_name = variable_name.strip()
-    value = value.strip()
-    type_dict = {'UPDATE_RATE': int,
-                 'SFX_VOLUME': float,
-                 'MUSIC_PRESET': str,
-                 'BACKUP_NAME': str,
-                 'VOLUME_LIST': list,
-                 'MUSIC_FOLDER_NAME': str,
-                 'KDA_THRESHOLDS': list}
-
-    if variable_name in type_dict and type_dict[variable_name] is not str:
-        return ast.literal_eval(value)
-    else:
-        return value
-
-
 def construct_settings_object(argument_dict) -> Settings:
     return Settings(
                     update_rate=argument_dict['UPDATE_RATE'],
+                    sfx_enabled=argument_dict['SFX_ENABLED'],
+                    music_enabled=argument_dict['MUSIC_ENABLED'],
                     sfx_volume=argument_dict['SFX_VOLUME'],
                     music_preset=argument_dict['MUSIC_PRESET'],
                     backup_name=argument_dict['BACKUP_NAME'],

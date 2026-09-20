@@ -1,0 +1,1 @@
+# This is not a music file, and should raise a NonMusicFileType error from dep_music.

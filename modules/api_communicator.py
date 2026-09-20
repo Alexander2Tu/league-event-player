@@ -60,8 +60,10 @@ class APICommunicator:
 
             return text_response
 
-        # urllib.error.URLError
-        except:
+        except urllib.error.URLError:
+            return None
+        except Exception as unknown_error:
+            print(type(unknown_error))
             return None
 
     def _find_name(self, data_dict: dict) -> str:

@@ -29,13 +29,17 @@ class MusicPlayer:
         self._volume_list = None
         self._mute_list = None
 
+        # Initialize variables on initialization
+        self._init_all()
+        try:
+            self._create_all_attributes()
+        except pygame.error:
+            raise NonMusicFileType()
+
 
 
 
     def run(self, loop_bool):
-        self._init_all()
-        self._create_all_attributes()
-
         self._loop_bool = loop_bool
         self.play_all()
 

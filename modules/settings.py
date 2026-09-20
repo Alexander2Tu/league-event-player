@@ -5,12 +5,15 @@
 
 class Settings:
     def __init__(self, update_rate: int,
+                 sfx_enabled: bool, music_enabled: bool,
                  sfx_volume: float, music_preset: str,
                  backup_name: str,
                  music_volume_list: list[float],
                  kda_threshold_list: list[int], music_folder_name: str):
         # Global Settings
         self.update_rate = update_rate
+        self.sfx_enabled = sfx_enabled
+        self.music_enabled = music_enabled
         self.sfx_volume = sfx_volume
         self.music_preset = music_preset
         self.backup_name = backup_name
