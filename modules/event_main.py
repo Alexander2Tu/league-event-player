@@ -49,11 +49,13 @@ class LeagueEventSoundsProgram:
         """
         if self.settings.music_enabled:
             self._setup_player()
+
         pygame.init()
         self._clock = pygame.time.Clock()
         pygame.mixer.init()
 
-        self._test_run_player()     # Test for NonMusicFileType Error
+        if self.settings.music_enabled:
+            self._test_run_player()     # Test for NonMusicFileType Error
 
 
     def _setup_player(self):
