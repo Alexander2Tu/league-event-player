@@ -1,22 +1,24 @@
 # event_main.py
 # Contains LeagueEventSoundsProgram, which runs the main program.
-import traceback
-from pathlib import Path
 
-import dep_music
+
 # Module Imports
+import dep_music
+from modules.api_communication import APICommunication
 from modules.api_communicator import APICommunicator
 from modules.settings import Settings
-import modules.settings_parser
 
 
 # Library Imports
+from pathlib import Path
 import pygame
-
+import traceback
 
 
 
 class LeagueEventSoundsProgram:
+    TIMER_TICK_EVENT = pygame.USEREVENT + 1
+
     def __init__(self, api_communicator: APICommunicator,
                  settings: Settings,
                  base_directory: str = '.'):
@@ -28,6 +30,10 @@ class LeagueEventSoundsProgram:
         # Main Variables
         self._previous_api_response = None
         self._clock = None
+
+        # Used to manage connection failure text
+        self._connected = False
+        self._error_count = 0
 
 
     def run(self) -> None:
@@ -46,6 +52,7 @@ class LeagueEventSoundsProgram:
     def initialize_all_pygame_resources(self):
         """
         Initializes all pygame resources: music player, clock, and mixer.
+        Also initializes the 1-second repeating event.
         """
         if self.settings.music_enabled:
             self._setup_player()
@@ -54,13 +61,14 @@ class LeagueEventSoundsProgram:
         self._clock = pygame.time.Clock()
         pygame.mixer.init()
 
-        if self.settings.music_enabled:
-            self._test_run_player()     # Test for NonMusicFileType Error
+        pygame.time.set_timer(self.TIMER_TICK_EVENT, 1000)
 
 
     def _setup_player(self):
         """
-        Initializes the music player
+        Initializes the music player, raises
+        NonMusicFileType exception if any files selected
+        are not music files.
         """
         music_list = []
         for path in sorted(Path(self.base_directory + '//music//kda//' + self.settings.music_folder_name).iterdir()):
@@ -70,19 +78,41 @@ class LeagueEventSoundsProgram:
         self._music_player = dep_music.MusicPlayer(music_list)
 
 
-    def _test_run_player(self):
+    def main_loop(self, infinite_loop: bool = True) -> None:
         """
-        Briefly runs all music tracks to test for invalid file types.
-        Raises NonMusicFileType if unable to run any music track.
+        Runs the loop for the League Event Sounds program.
         """
-        self._music_player.mute_all()
+        while infinite_loop:
+            self._clock.tick(self.settings.update_rate)  # Regulate loop time to update rate
+            self._handle_events()
+
+            communication_obj = self.api_communicator.request_api()
+            if communication_obj:
+                self._check_stats(communication_obj)
+            else:
+                self._print_failure_text()
 
 
+    def _handle_events(self) -> None:
+        """
+        When run, checks for any events and handles them appropriately
+        """
+        for event in pygame.event.get():
+            if event.type == self.TIMER_TICK_EVENT:
+                # Updates the music player timer to tick down duration.
+                self._music_player.tick()
 
 
+    def _check_stats(self, communication_obj: APICommunication) -> None:
+        if not self._connected:
+            self._print_reconnect_text()
+            self._run_player()
 
-    def main_loop(self):
-        pass
+        if self.settings.music_enabled:
+            self._handle_kda_music(communication_obj)
+
+        if self.settings.sfx_enabled:
+            self._handle_sfx(communication_obj)
 
 
     def _print_appropriate_error_message(self, e: Exception):
