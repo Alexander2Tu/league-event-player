@@ -1,7 +1,5 @@
 import unittest
-from modules.settings import *
 from modules.settings_parser import *
-import os
 
 
 
@@ -11,12 +9,14 @@ class TestSettingsParser(unittest.TestCase):
         sfx_enabled, music_enabled = True, True
         volume = 0.5
         music_preset = 'grasswalk'
+        sfx_folder = 'default'
         volume_list = [0.99, 0.99, 0.99]
         kda_threshold_list = [1, 3]
         music_folder_name = 'grasswalk'
         backup_name = 'JohnLeague#NA1'
 
-        obj = Settings(update_rate, sfx_enabled, music_enabled, volume, music_preset, backup_name,
+        obj = Settings(update_rate, sfx_enabled, music_enabled, volume, music_preset,
+                       sfx_folder, backup_name,
                        volume_list, kda_threshold_list, music_folder_name)
 
         self.assertEqual(obj.update_rate, update_rate)
@@ -24,6 +24,7 @@ class TestSettingsParser(unittest.TestCase):
         self.assertEqual(obj.music_enabled, music_enabled)
         self.assertEqual(obj.sfx_volume, volume)
         self.assertEqual(obj.music_preset, music_preset)
+        self.assertEqual(obj.sfx_folder, sfx_folder)
         self.assertEqual(obj.backup_name, backup_name)
         self.assertEqual(obj.music_volume_list, volume_list)
         self.assertEqual(obj.kda_threshold_list, kda_threshold_list)
@@ -41,6 +42,7 @@ class TestSettingsParser(unittest.TestCase):
         self.assertEqual(argument_dict['MUSIC_ENABLED'], True)
         self.assertEqual(argument_dict['SFX_VOLUME'], 0.5)
         self.assertEqual(argument_dict['MUSIC_PRESET'], 'grasswalk')
+        self.assertEqual(argument_dict['SFX_FOLDER'], 'default')
         self.assertEqual(argument_dict['BACKUP_NAME'], 'JohnLeague#NA1')
 
 
@@ -61,6 +63,7 @@ class TestSettingsParser(unittest.TestCase):
                          'MUSIC_ENABLED': True,
                          'SFX_VOLUME': 0.5,
                          'MUSIC_PRESET': 'grasswalk_preset',
+                         'SFX_FOLDER': 'default',
                          'BACKUP_NAME': 'JohnLeague#NA1'}
         parse_music_preset_settings(argument_dict, '.\\testing_files')
         self.assertEqual(argument_dict['VOLUME_LIST'], [1.0, 0.9, 0.8])
@@ -74,6 +77,7 @@ class TestSettingsParser(unittest.TestCase):
                          'MUSIC_ENABLED': True,
                          'SFX_VOLUME': 0.5,
                          'MUSIC_PRESET': 'grasswalk_preset',
+                         'SFX_FOLDER': 'default',
                          'BACKUP_NAME': 'JohnLeague#NA1',
                          'VOLUME_LIST': [1.0, 0.9, 0.8],
                          'MUSIC_FOLDER_NAME': 'grasswalk',
@@ -85,6 +89,7 @@ class TestSettingsParser(unittest.TestCase):
         self.assertEqual(argument_dict['MUSIC_ENABLED'], settings_obj.music_enabled)
         self.assertEqual(argument_dict['SFX_VOLUME'], settings_obj.sfx_volume)
         self.assertEqual(argument_dict['MUSIC_PRESET'], settings_obj.music_preset)
+        self.assertEqual(argument_dict['SFX_FOLDER'], settings_obj.sfx_folder)
         self.assertEqual(argument_dict['VOLUME_LIST'], settings_obj.music_volume_list)
         self.assertEqual(argument_dict['MUSIC_FOLDER_NAME'], settings_obj.music_folder_name)
         self.assertEqual(argument_dict['KDA_THRESHOLDS'], settings_obj.kda_threshold_list)
@@ -97,6 +102,7 @@ class TestSettingsParser(unittest.TestCase):
                          'MUSIC_ENABLED': True,
                          'SFX_VOLUME': 0.5,
                          'MUSIC_PRESET': 'grasswalk_preset',
+                         'SFX_FOLDER': 'default',
                          'BACKUP_NAME': 'JohnLeague#NA1',
                          'VOLUME_LIST': [1.0, 0.9, 0.8],
                          'MUSIC_FOLDER_NAME': 'grasswalk',
@@ -107,6 +113,7 @@ class TestSettingsParser(unittest.TestCase):
         self.assertEqual(argument_dict['MUSIC_ENABLED'], settings_obj.music_enabled)
         self.assertEqual(argument_dict['SFX_VOLUME'], settings_obj.sfx_volume)
         self.assertEqual(argument_dict['MUSIC_PRESET'], settings_obj.music_preset)
+        self.assertEqual(argument_dict['SFX_FOLDER'], settings_obj.sfx_folder)
         self.assertEqual(argument_dict['BACKUP_NAME'], settings_obj.backup_name)
         self.assertEqual(argument_dict['VOLUME_LIST'], settings_obj.music_volume_list)
         self.assertEqual(argument_dict['MUSIC_FOLDER_NAME'], settings_obj.music_folder_name)

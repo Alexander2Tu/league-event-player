@@ -11,5 +11,8 @@ SFX_VOLUME = 0.50
 # Music Preset
 MUSIC_PRESET = grasswalk
 
+# Sound Folder
+SFX_FOLDER = default
+
 # Backup Name
 BACKUP_NAME = JohnLeague#NA1

@@ -30,6 +30,7 @@ def parse_main_settings(argument_dict: dict, main_settings_path: str) -> None:
                       'MUSIC_ENABLED': bool,
                       'SFX_VOLUME': float,
                       'MUSIC_PRESET': str,
+                      'SFX_FOLDER': str,
                       'BACKUP_NAME': str}
     verify_arguments(argument_dict, main_type_dict, 'Main')
 
@@ -61,6 +62,7 @@ def _parse_argument_value(variable_name: str, value: str) -> 'MysteryType':
                  'MUSIC_ENABLED': bool,
                  'SFX_VOLUME': float,
                  'MUSIC_PRESET': str,
+                 'SFX_FOLDER': str,
                  'BACKUP_NAME': str,
                  'VOLUME_LIST': list,
                  'MUSIC_FOLDER_NAME': str,
@@ -112,6 +114,7 @@ def construct_settings_object(argument_dict) -> Settings:
                     music_enabled=argument_dict['MUSIC_ENABLED'],
                     sfx_volume=argument_dict['SFX_VOLUME'],
                     music_preset=argument_dict['MUSIC_PRESET'],
+                    sfx_folder=argument_dict['SFX_FOLDER'],
                     backup_name=argument_dict['BACKUP_NAME'],
                     music_volume_list=argument_dict['VOLUME_LIST'],
                     kda_threshold_list=argument_dict['KDA_THRESHOLDS'],
