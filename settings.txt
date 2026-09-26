@@ -14,5 +14,5 @@ MUSIC_PRESET = grasswalk
 # Sound Folder
 SFX_FOLDER = default
 
-# Backup Name
+# Backup Name (for spectator mode)
 BACKUP_NAME = JohnLeague#NA1

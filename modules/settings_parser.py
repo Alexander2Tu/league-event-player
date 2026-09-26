@@ -71,7 +71,7 @@ def _parse_argument_value(variable_name: str, value: str) -> 'MysteryType':
     if variable_name in type_dict and type_dict[variable_name] is not str:
         return ast.literal_eval(value)
     else:
-        return value
+        return value.strip("'")
 
 
 def verify_arguments(argument_dict: dict, settings_key_dict: dict,

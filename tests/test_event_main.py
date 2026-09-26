@@ -47,13 +47,13 @@ class TestEventMain(unittest.TestCase):
         communication_obj2 = APICommunication(0, 0, 0, False, 'JohnLeague#NA1')
         communication_obj3 = APICommunication(1, 0, 0, False, 'JohnLeague#NA1')
         communication_obj4 = APICommunication(1, 0, 0, True, 'JohnLeague#NA1')
-        self.assertEqual(program.process_kda_changes(communication_obj1), False)
+        self.assertEqual(program.process_kda_changes(communication_obj1), True)
         program._previous_api_response = communication_obj1
         self.assertEqual(program.process_kda_changes(communication_obj2), False)
         program._previous_api_response = communication_obj2
         self.assertEqual(program.process_kda_changes(communication_obj3), True)
         program._previous_api_response = communication_obj3
-        self.assertEqual(program.process_kda_changes(communication_obj4), False)
+        self.assertEqual(program.process_kda_changes(communication_obj4), True)
 
     def test_non_sound_file_error(self):
         self.settings.sfx_folder = 'invalid'

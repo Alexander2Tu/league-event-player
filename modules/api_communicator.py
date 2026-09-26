@@ -2,6 +2,7 @@
 # Contains APICommunicator class, which handles
 # communicating with the League API and creating
 # APICommunication objects on success; None on failure.
+import http
 import json
 from modules.api_communication import APICommunication
 import ssl
@@ -61,6 +62,10 @@ class APICommunicator:
             return text_response
 
         except urllib.error.URLError:
+            return None
+        except ConnectionResetError:
+            return None
+        except http.client.RemoteDisconnected:
             return None
         except Exception as unknown_error:
             print(type(unknown_error))

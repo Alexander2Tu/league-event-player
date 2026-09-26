@@ -40,6 +40,7 @@ class LeagueEventSoundsProgram:
         self._clock = None
         self._music_player = None
         self._sfx_sound_dict = dict()
+        self._recent_kill = False
 
         # Used to manage connection failure text
         self._connected = False
@@ -69,6 +70,10 @@ class LeagueEventSoundsProgram:
         Initializes all pygame resources: music player, clock, and mixer.
         Also initializes the 1-second repeating event.
         """
+        pygame.init()
+        self._clock = pygame.time.Clock()
+        pygame.mixer.init()
+
         if self.settings.music_enabled:
             self._setup_player()
             self.log('Music player set up!')
@@ -80,10 +85,6 @@ class LeagueEventSoundsProgram:
             self.log('Sound effects set up!')
         else:
             self.log('Sound effects disabled; skipping...')
-
-        pygame.init()
-        self._clock = pygame.time.Clock()
-        pygame.mixer.init()
 
         pygame.time.set_timer(self.TIMER_TICK_EVENT, 1000)
         self.log('Pygame finished setting up!')
@@ -115,9 +116,13 @@ class LeagueEventSoundsProgram:
                         sound.set_volume(self.settings.sfx_volume)
                         sound_list.append(sound)
                     except pygame.error:
-                        raise custom_exceptions.NonSoundFileType(f'{self.base_directory}//sounds//{event_type}')
+                        raise custom_exceptions.NonSoundFileType(
+                            f'{self.base_directory}//sounds//{self.settings.sfx_folder}//{event_type}'
+                        )
             if len(sound_list) == 0:
-                raise custom_exceptions.EmptySoundFolder(f'{self.base_directory}//sounds//{event_type}')
+                raise custom_exceptions.EmptySoundFolder(
+                    f'{self.base_directory}//sounds//{self.settings.sfx_folder}//{event_type}'
+                )
             self._sfx_sound_dict[event_type] = sound_list
 
 
@@ -145,8 +150,10 @@ class LeagueEventSoundsProgram:
         for event in pygame.event.get():
             if event.type == self.TIMER_TICK_EVENT:
                 # Updates the music player timer to tick down duration.
-                if self._music_player.get_duration() > 0:
+                if self.settings.music_enabled and self._music_player.get_duration() > 0:
                     self._music_player.tick()
+                    if self._music_player.get_duration() == 0:
+                        self._special_change_occurred = True
 
 
     def _check_stats(self, communication_obj: APICommunication) -> None:
@@ -158,9 +165,12 @@ class LeagueEventSoundsProgram:
             self._print_reconnect_text()
             self._error_count = 0
             self._connected = True
-            self._run_player()
 
-        if self.process_kda_changes(communication_obj):
+            if self.settings.music_enabled:
+                self._run_player()
+
+        if self.process_kda_changes(communication_obj) or self._special_change_occurred:
+            self._special_change_occurred = False   # Second condition allow checking when KDA not changed
             if self.settings.sfx_enabled:
                 self._handle_sfx(communication_obj)
 
@@ -168,6 +178,9 @@ class LeagueEventSoundsProgram:
                 self._handle_kda_music(communication_obj)
 
         self._previous_api_response = communication_obj
+
+        if self.settings.music_enabled:
+            self._music_player.update_all()
 
 
     def _print_reconnect_text(self):
@@ -206,13 +219,18 @@ class LeagueEventSoundsProgram:
         changed. Also sets music timer for recent kills.
         """
         if self._previous_api_response is None:
-            return False
+            return True
 
         if (communication_obj.kills > self._previous_api_response.kills or
                 communication_obj.assists > self._previous_api_response.assists):
-            self._music_player.set_duration(10)
+            if self.settings.music_enabled:
+                self._music_player.set_duration(10)
+                self._recent_kill = True
             return True
-        elif communication_obj.deaths > self._previous_api_response.deaths:
+        elif (communication_obj.kills != self._previous_api_response.kills
+                or communication_obj.assists != self._previous_api_response.assists
+                or communication_obj.deaths != self._previous_api_response.deaths
+              or communication_obj.is_dead != self._previous_api_response.is_dead):
             return True
         else:
             return False
@@ -230,7 +248,8 @@ class LeagueEventSoundsProgram:
         # Determine music phase based on kda
         for i in range(len(self.settings.kda_threshold_list)):
             if kda >= self.settings.kda_threshold_list[i]:
-                chosen_phase = i
+                chosen_phase = i + 1
+            else:
                 break
 
         # Increase phase if recently killed
@@ -252,6 +271,9 @@ class LeagueEventSoundsProgram:
         """
         Given an APICommunication, handles the playing of sound effects.
         """
+        if self._previous_api_response is None:
+            return
+
         if communication_obj.kills > self._previous_api_response.kills:
             random.choice(self._sfx_sound_dict['kills']).play(0)
 
@@ -298,11 +320,11 @@ class LeagueEventSoundsProgram:
                      f'tracks are valid music files.')
         elif type(e) is custom_exceptions.NonSoundFileType:
             self.log(f'ERROR: Sound player failed to load provided sound files in '
-                     f'"{e.path_to_error}", please check that all '
+                     f'"{e.path_of_error}", please check that all '
                      f'tracks are valid sound files.')
         elif type(e) is custom_exceptions.EmptySoundFolder:
             self.log(f'ERROR: Sound player found no sound files in '
-                     f'"{e.path_to_error}", please add sound files in there '
+                     f'"{e.path_of_error}", please add sound files in there '
                      f'or disable sound effects in the settings.')
         else:
             self.log(f'Program ran into unexpected |{type(e)}| exception.')
