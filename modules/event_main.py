@@ -4,6 +4,7 @@
 
 # Module Imports
 import dep_music
+from modules import custom_exceptions
 from modules.api_communication import APICommunication
 from modules.api_communicator import APICommunicator
 from modules.settings import Settings
@@ -12,6 +13,8 @@ from modules.settings import Settings
 # Library Imports
 from pathlib import Path
 import pygame
+import random
+import time
 import traceback
 
 
@@ -35,6 +38,8 @@ class LeagueEventSoundsProgram:
         # Main Variables
         self._previous_api_response = None
         self._clock = None
+        self._music_player = None
+        self._sfx_sound_dict = dict()
 
         # Used to manage connection failure text
         self._connected = False
@@ -67,6 +72,9 @@ class LeagueEventSoundsProgram:
         if self.settings.music_enabled:
             self._setup_player()
 
+        if self.settings.sfx_enabled:
+            self._setup_sfx()
+
         pygame.init()
         self._clock = pygame.time.Clock()
         pygame.mixer.init()
@@ -88,6 +96,24 @@ class LeagueEventSoundsProgram:
         self._music_player = dep_music.MusicPlayer(music_list)
 
 
+    def _setup_sfx(self):
+        event_types = 'kills', 'deaths', 'assists'
+        for event_type in event_types:
+            sound_list = []
+            for sound_file in (
+                    Path(f'{self.base_directory}//sounds//{self.settings.sfx_folder}//{event_type}').iterdir()):
+                if sound_file.is_file():
+                    try:
+                        sound = pygame.mixer.Sound(sound_file.open('r'))
+                        sound.set_volume(self.settings.sfx_volume)
+                        sound_list.append(sound)
+                    except pygame.error:
+                        raise custom_exceptions.NonSoundFileType(f'{self.base_directory}//sounds//{event_type}')
+            if len(sound_list) == 0:
+                raise custom_exceptions.EmptySoundFolder(f'{self.base_directory}//sounds//{event_type}')
+            self._sfx_sound_dict[event_type] = sound_list
+
+
     def main_loop(self, infinite_loop: bool = True) -> None:
         """
         Runs the loop for the League Event Sounds program.
@@ -100,6 +126,8 @@ class LeagueEventSoundsProgram:
             if communication_obj:
                 self._check_stats(communication_obj)
             else:
+                self._connected = False
+                self._stop_player()
                 self._print_failure_text()
 
 
@@ -120,6 +148,7 @@ class LeagueEventSoundsProgram:
         """
         if not self._connected:
             self._print_reconnect_text()
+            self._error_count = 0
             self._run_player()
 
         if self.process_kda_changes(communication_obj):
@@ -128,6 +157,8 @@ class LeagueEventSoundsProgram:
 
             if self.settings.music_enabled:
                 self._handle_kda_music(communication_obj)
+
+        self._previous_api_response = communication_obj
 
 
     def _print_reconnect_text(self):
@@ -166,19 +197,15 @@ class LeagueEventSoundsProgram:
         changed. Also sets music timer for recent kills.
         """
         if self._previous_api_response is None:
-            self._previous_api_response = communication_obj
             return False
 
         if (communication_obj.kills > self._previous_api_response.kills or
-            communication_obj.assists > self._previous_api_response.assists):
+                communication_obj.assists > self._previous_api_response.assists):
             self._music_player.set_duration(10)
-            self._previous_api_response = communication_obj
             return True
         elif communication_obj.deaths > self._previous_api_response.deaths:
-            self._previous_api_response = communication_obj
             return True
         else:
-            self._previous_api_response = communication_obj
             return False
 
 
@@ -186,7 +213,7 @@ class LeagueEventSoundsProgram:
         """
         Given an APICommunication, handles the changing of music.
         """
-        deaths = max(0.5, communication_obj.deaths) # Prevent division by zero
+        deaths = max(0.5, communication_obj.deaths)  # Prevent division by zero
         kda = (communication_obj.kills + communication_obj.assists) / deaths
 
         chosen_phase = 0
@@ -212,10 +239,39 @@ class LeagueEventSoundsProgram:
         self._music_player.solo(chosen_phase)
 
 
-    def _handle_sfx(self, communication_obj: APICommunication):
+    def _handle_sfx(self, communication_obj: APICommunication) -> None:
         """
         Given an APICommunication, handles the playing of sound effects.
         """
+        if communication_obj.kills > self._previous_api_response.kills:
+            random.choice(self._sfx_sound_dict['kills']).play(0)
+
+        if communication_obj.deaths > self._previous_api_response.deaths:
+            random.choice(self._sfx_sound_dict['deaths']).play(0)
+
+        if communication_obj.assists > self._previous_api_response.assists:
+            random.choice(self._sfx_sound_dict['assists']).play(0)
+
+
+    def _stop_player(self) -> None:
+        """
+        When called, stops the music player.
+        """
+        if self._music_player:
+            self._music_player.stop_all()
+
+
+    def _print_failure_text(self):
+        """
+        When called, prints error connecting message.
+        """
+        self._error_count += 1
+        for i in range(5, 0, -1):
+            if i > 1:
+                self.log(f'\rError connecting ({self._error_count}); trying again in {i} seconds...', end='')
+            else:
+                self.log(f'\rError connecting ({self._error_count}); trying again in {i} second...', end='')
+            time.sleep(1)
 
 
     def _print_appropriate_error_message(self, e: Exception):
@@ -231,6 +287,14 @@ class LeagueEventSoundsProgram:
             self.log(f'ERROR: Music player failed to run on provided music tracks in '
                      f'"music/kda/{self.settings.music_folder_name}", please check that all '
                      f'tracks are valid music files.')
+        elif type(e) is custom_exceptions.NonSoundFileType:
+            self.log(f'ERROR: Sound player failed to load provided sound files in '
+                     f'"{e.path_to_error}", please check that all '
+                     f'tracks are valid sound files.')
+        elif type(e) is custom_exceptions.EmptySoundFolder:
+            self.log(f'ERROR: Sound player found no sound files in '
+                     f'"{e.path_to_error}", please add sound files in there '
+                     f'or disable sound effects in the settings.')
         else:
             self.log(f'Program ran into unexpected |{type(e)}| exception.')
             self.log(f'Error message: {e}')
@@ -249,16 +313,16 @@ class LeagueEventSoundsProgram:
             self.print_file = None
 
 
-    def log(self, print_message: str):
+    def log(self, print_message: str, end: str = '\n'):
         """
         Given a string, prints to the console or log file
         depending on initial construction input.
         """
         if self.print_log_path:
             if self.print_file:
-                self.print_file.write(f'{print_message}\n')
+                self.print_file.write(f'{print_message}{end}')
                 self.print_file.flush()
             else:
                 self.print_file = open(self.print_log_path, 'a')
         else:
-            print(print_message)
+            print(print_message, end=end)

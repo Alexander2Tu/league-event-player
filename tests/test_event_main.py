@@ -48,9 +48,32 @@ class TestEventMain(unittest.TestCase):
         communication_obj3 = APICommunication(1, 0, 0, False, 'JohnLeague#NA1')
         communication_obj4 = APICommunication(1, 0, 0, True, 'JohnLeague#NA1')
         self.assertEqual(program.process_kda_changes(communication_obj1), False)
+        program._previous_api_response = communication_obj1
         self.assertEqual(program.process_kda_changes(communication_obj2), False)
+        program._previous_api_response = communication_obj2
         self.assertEqual(program.process_kda_changes(communication_obj3), True)
+        program._previous_api_response = communication_obj3
         self.assertEqual(program.process_kda_changes(communication_obj4), False)
+
+    def test_non_sound_file_error(self):
+        self.settings.sfx_folder = 'invalid'
+        program = LeagueEventSoundsProgram(None, self.settings, 'testing_files')
+        with self.assertRaises(custom_exceptions.NonSoundFileType):
+            program.initialize_all_pygame_resources()
+
+    def test_empty_sound_folder_error(self):
+        self.settings.sfx_folder = 'empty'
+        program = LeagueEventSoundsProgram(None, self.settings, 'testing_files')
+        with self.assertRaises(custom_exceptions.EmptySoundFolder):
+            program.initialize_all_pygame_resources()
+
+    def test_no_sound_errors_if_sound_disabled(self):
+        self.settings.sfx_enabled = False
+        self.settings.sfx_folder = 'empty'
+        program = LeagueEventSoundsProgram(None, self.settings, 'testing_files')
+        program.initialize_all_pygame_resources()
+        self.settings.sfx_folder = 'invalid'
+        program.initialize_all_pygame_resources()
 
 
 if __name__ == '__main__':
