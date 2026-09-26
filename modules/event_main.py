@@ -21,11 +21,16 @@ class LeagueEventSoundsProgram:
 
     def __init__(self, api_communicator: APICommunicator,
                  settings: Settings,
-                 base_directory: str = '.'):
+                 base_directory: str = '.',
+                 print_log_path: str = ''):
         # Saved Arguments
         self.api_communicator = api_communicator
         self.settings = settings
         self.base_directory = base_directory    # Path to root of program
+        self.print_log_path = print_log_path
+
+        # For printing to file without closing
+        self.print_file = None
 
         # Main Variables
         self._previous_api_response = None
@@ -40,13 +45,18 @@ class LeagueEventSoundsProgram:
         """
         Runs the League Event Sounds Program.
         """
+        exception_exit = False
         try:
             self.initialize_all_pygame_resources()
             self.main_loop()
         except Exception as e:
-            if self._music_player is not None:
-                self._stop_player()
             self._print_appropriate_error_message(e)
+            exception_exit = True
+        finally:
+            self._close_all_resources()
+
+        if exception_exit:
+            input('Press any key to exit program...')
 
 
     def initialize_all_pygame_resources(self):
@@ -71,7 +81,7 @@ class LeagueEventSoundsProgram:
         are not music files.
         """
         music_list = []
-        for path in sorted(Path(self.base_directory + '//music//kda//' + self.settings.music_folder_name).iterdir()):
+        for path in sorted(Path(self.base_directory + '//music//' + self.settings.music_folder_name).iterdir()):
             if path.is_file():
                 music_list.append(path)
 
@@ -84,7 +94,7 @@ class LeagueEventSoundsProgram:
         """
         while infinite_loop:
             self._clock.tick(self.settings.update_rate)  # Regulate loop time to update rate
-            self._handle_events()
+            self._handle_pygame_events()
 
             communication_obj = self.api_communicator.request_api()
             if communication_obj:
@@ -93,7 +103,7 @@ class LeagueEventSoundsProgram:
                 self._print_failure_text()
 
 
-    def _handle_events(self) -> None:
+    def _handle_pygame_events(self) -> None:
         """
         When run, checks for any events and handles them appropriately
         """
@@ -104,15 +114,108 @@ class LeagueEventSoundsProgram:
 
 
     def _check_stats(self, communication_obj: APICommunication) -> None:
+        """
+        Using the provided APICommunication, handles playing music
+        and sound effects.
+        """
         if not self._connected:
             self._print_reconnect_text()
             self._run_player()
 
-        if self.settings.music_enabled:
-            self._handle_kda_music(communication_obj)
+        if self.process_kda_changes(communication_obj):
+            if self.settings.sfx_enabled:
+                self._handle_sfx(communication_obj)
 
-        if self.settings.sfx_enabled:
-            self._handle_sfx(communication_obj)
+            if self.settings.music_enabled:
+                self._handle_kda_music(communication_obj)
+
+
+    def _print_reconnect_text(self):
+        """
+        Prints message informing of reconnection.
+        """
+        self.log(f'Successfully connected!')
+
+
+    def _run_player(self):
+        """
+        Runs the music player.
+        """
+        if not self._music_player.get_running():
+            self._music_player.run(True)
+            self._adjust_volume(self.settings.music_volume_list)
+            self._music_player.solo(0)
+
+
+    def _adjust_volume(self, volume_list: list[float]) -> None:
+        """
+        Given a list for volumes, changes the volume
+        for each music track
+        """
+        for i in range(len(volume_list)):
+            try:
+                self._music_player.set_volume(i, volume_list[i])
+
+            except IndexError:
+                self.log(f'ERROR: Invalid music index {i} for volume of music')
+
+
+    def process_kda_changes(self, communication_obj: APICommunication) -> bool:
+        """
+        Given an APICommunication, returns True if any of the KDA stats
+        changed. Also sets music timer for recent kills.
+        """
+        if self._previous_api_response is None:
+            self._previous_api_response = communication_obj
+            return False
+
+        if (communication_obj.kills > self._previous_api_response.kills or
+            communication_obj.assists > self._previous_api_response.assists):
+            self._music_player.set_duration(10)
+            self._previous_api_response = communication_obj
+            return True
+        elif communication_obj.deaths > self._previous_api_response.deaths:
+            self._previous_api_response = communication_obj
+            return True
+        else:
+            self._previous_api_response = communication_obj
+            return False
+
+
+    def _handle_kda_music(self, communication_obj: APICommunication) -> None:
+        """
+        Given an APICommunication, handles the changing of music.
+        """
+        deaths = max(0.5, communication_obj.deaths) # Prevent division by zero
+        kda = (communication_obj.kills + communication_obj.assists) / deaths
+
+        chosen_phase = 0
+
+        # Determine music phase based on kda
+        for i in range(len(self.settings.kda_threshold_list)):
+            if kda >= self.settings.kda_threshold_list[i]:
+                chosen_phase = i
+                break
+
+        # Increase phase if recently killed
+        if self._music_player.get_duration() != 0:
+            chosen_phase += 1
+
+        # Zero out phase if dead
+        if communication_obj.is_dead:
+            chosen_phase = 0
+
+        # Correct to music limits
+        chosen_phase = min(chosen_phase, len(self._music_player.get_channels()) - 1)
+        chosen_phase = max(0, chosen_phase)
+
+        self._music_player.solo(chosen_phase)
+
+
+    def _handle_sfx(self, communication_obj: APICommunication):
+        """
+        Given an APICommunication, handles the playing of sound effects.
+        """
 
 
     def _print_appropriate_error_message(self, e: Exception):
@@ -121,16 +224,41 @@ class LeagueEventSoundsProgram:
         prints expected or unexpected error messages to aid the user.
         """
         if type(e) is dep_music.EmptyMusicPlaylistError:
-            print(f'ERROR: Music player failed to find music tracks in '
-                  f'"music/kda/{self.settings.music_folder_name}", please check that '
-                  f'the music folder is non-empty or disable music in the settings.')
+            self.log(f'ERROR: Music player failed to find music tracks in '
+                     f'"music/kda/{self.settings.music_folder_name}", please check that '
+                     f'the music folder is non-empty or disable music in the settings.')
         elif type(e) is dep_music.NonMusicFileType:
-            print(f'ERROR: Music player failed to run on provided music tracks in '
-                  f'"music/kda/{self.settings.music_folder_name}", please check that all '
-                  f'tracks are valid music files.')
+            self.log(f'ERROR: Music player failed to run on provided music tracks in '
+                     f'"music/kda/{self.settings.music_folder_name}", please check that all '
+                     f'tracks are valid music files.')
         else:
-            print(f'Program ran into unexpected |{type(e)}| exception.')
-            print(f'Error message: {e}')
-            print(f'Full traceback: {traceback.format_exc()}')
+            self.log(f'Program ran into unexpected |{type(e)}| exception.')
+            self.log(f'Error message: {e}')
+            self.log(f'Full traceback: {traceback.format_exc()}')
 
-        input('Press any key to exit program...')
+
+    def _close_all_resources(self):
+        """
+        When run, closes all resources (expected to happen at end of program)
+        """
+        if self._music_player is not None:
+            self._stop_player()
+            self._music_player = None
+        if self.print_file is not None:
+            self.print_file.close()
+            self.print_file = None
+
+
+    def log(self, print_message: str):
+        """
+        Given a string, prints to the console or log file
+        depending on initial construction input.
+        """
+        if self.print_log_path:
+            if self.print_file:
+                self.print_file.write(f'{print_message}\n')
+                self.print_file.flush()
+            else:
+                self.print_file = open(self.print_log_path, 'a')
+        else:
+            print(print_message)

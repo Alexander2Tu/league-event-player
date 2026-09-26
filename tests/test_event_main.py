@@ -40,6 +40,17 @@ class TestEventMain(unittest.TestCase):
         self.settings.music_folder_name = 'empty_grasswalk'
         program.initialize_all_pygame_resources()
 
+    def test_process_kda_changes_returns_correct_boolean(self):
+        program = LeagueEventSoundsProgram(None, self.settings, 'testing_files')
+        program.initialize_all_pygame_resources()
+        communication_obj1 = APICommunication(0, 0, 0, False, 'JohnLeague#NA1')
+        communication_obj2 = APICommunication(0, 0, 0, False, 'JohnLeague#NA1')
+        communication_obj3 = APICommunication(1, 0, 0, False, 'JohnLeague#NA1')
+        communication_obj4 = APICommunication(1, 0, 0, True, 'JohnLeague#NA1')
+        self.assertEqual(program.process_kda_changes(communication_obj1), False)
+        self.assertEqual(program.process_kda_changes(communication_obj2), False)
+        self.assertEqual(program.process_kda_changes(communication_obj3), True)
+        self.assertEqual(program.process_kda_changes(communication_obj4), False)
 
 
 if __name__ == '__main__':
