@@ -71,15 +71,22 @@ class LeagueEventSoundsProgram:
         """
         if self.settings.music_enabled:
             self._setup_player()
+            self.log('Music player set up!')
+        else:
+            self.log('Music player disabled; skipping...')
 
         if self.settings.sfx_enabled:
             self._setup_sfx()
+            self.log('Sound effects set up!')
+        else:
+            self.log('Sound effects disabled; skipping...')
 
         pygame.init()
         self._clock = pygame.time.Clock()
         pygame.mixer.init()
 
         pygame.time.set_timer(self.TIMER_TICK_EVENT, 1000)
+        self.log('Pygame finished setting up!')
 
 
     def _setup_player(self):
@@ -138,7 +145,8 @@ class LeagueEventSoundsProgram:
         for event in pygame.event.get():
             if event.type == self.TIMER_TICK_EVENT:
                 # Updates the music player timer to tick down duration.
-                self._music_player.tick()
+                if self._music_player.get_duration() > 0:
+                    self._music_player.tick()
 
 
     def _check_stats(self, communication_obj: APICommunication) -> None:
@@ -149,6 +157,7 @@ class LeagueEventSoundsProgram:
         if not self._connected:
             self._print_reconnect_text()
             self._error_count = 0
+            self._connected = True
             self._run_player()
 
         if self.process_kda_changes(communication_obj):
